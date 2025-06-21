@@ -33,23 +33,24 @@ jobs:
             echo "⚠️ Server responded with HTTP $STATUS. Proceeding anyway..."
           fi
       - name: Deploy to Server 2 (only if online)
+        env:
+          SERVER_IP: ${{ secrets.DEPLOY_SERVER_TWO }}
+          USERNAME: ${{ secrets.USERNAME }}
+          WORK_DIR: ${{ secrets.WORK_DIR }}
         run: |
-          echo "🔍 Checking if $SERVER_2 is online..."
-          if nc -z -w3 $SERVER_IP 22; then
+          echo "🔍 Checking if $SERVER_IP is online..."
+          if nc -z -w3 "$SERVER_IP" 22; then
             echo "✅ $SERVER_IP is reachable. Deploying..."
-            ssh -o StrictHostKeyChecking=no $USERNAME@$SERVER_2 bash -s << 'EOF'
-              set -e
-              echo "Deploying to $WORK_DIR"
-              cd "$WORK_DIR"
-              echo "Saving current commit..."
-              git rev-parse HEAD > .prev-deploy || true
-              echo "Pulling latest code..."
-              git reset --hard
-              git pull origin main
-            EOF
+            ssh -o StrictHostKeyChecking=no "$USERNAME@$SERVER_IP" <<EOF
+            set -e
+            echo "Deploying to $WORK_DIR"
+            cd "$WORK_DIR"
+            echo "Saving current commit..."
+            git rev-parse HEAD > .prev-deploy || true
+            echo "Pulling latest code..."
+            git reset --hard
+            git pull origin main
+          EOF
           else
-            echo "❌ $SERVER_2 is offline. Skipping deployment."
+            echo "❌ $SERVER_IP is offline. Skipping deployment."
           fi
-
-
-
