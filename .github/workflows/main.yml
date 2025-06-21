@@ -38,20 +38,6 @@ jobs:
 
       - name: Deploy to Server 1
         run: |
-          ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_1 << 'EOF'
-            set -e
-            echo $WORK_DIR
-          EOF
-
-      - name: Deploy to Server 2
-        run: |
-          ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_2 << 'EOF'
-            set -e
-            cd $WORK_DIR || exit 1
-            echo "Saving current commit..."
-            git rev-parse HEAD > .prev-deploy || true
-
-            echo "Pulling latest code..."
-            git reset --hard
-            git pull origin main
+          echo $WORK_DIR
+          echo $SERVER_1
           EOF
