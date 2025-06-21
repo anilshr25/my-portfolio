@@ -19,7 +19,7 @@ jobs:
           
       - name: Health check with mTLS (2s timeout)
         env:
-          SERVER_IP: ${{ secrets.DEPLOY_SERVER_ONE }}
+          SERVER_IP: ${{ secrets.DEPLOY_SERVER_TWO }}
           PROTOCOL: https
         run: |
           echo "⏳ Checking $PROTOCOL://$SERVER_IP/healthcheck with mTLS"
