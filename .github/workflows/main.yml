@@ -29,12 +29,6 @@ jobs:
           echo "${{ secrets.CERT_PEM_B64 }}" | base64 -d > .secrets/client.crt
           echo "${{ secrets.KEY_PEM_B64 }}" | base64 -d > .secrets/client.key
           echo "${{ secrets.CA_PEM_B64 }}" | base64 -d > .secrets/ca.pem
-          
-          # Validate certificate formats
-          openssl x509 -in .secrets/client.crt -noout
-          openssl rsa -in .secrets/client.key -check -noout
-          openssl x509 -in .secrets/ca.pem -noout
-
       - name: Perform mTLS health check
         id: healthcheck
         run: |
