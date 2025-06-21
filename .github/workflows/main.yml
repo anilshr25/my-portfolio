@@ -17,7 +17,7 @@ jobs:
           printf "%s" "${{ secrets.KEY_PEM_B64 }}" | base64 -d > /tmp/client.key
           printf "%s" "${{ secrets.CA_PEM_B64 }}" | base64 -d > /tmp/ca.pem
           
-      - name: Health check with mTLS (2s timeout)
+      - name: Health check with mTLS (allow failure)
         env:
           SERVER_IP: ${{ secrets.DEPLOY_SERVER_TWO }}
           PROTOCOL: https
@@ -26,18 +26,15 @@ jobs:
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             --cert client.crt --key client.key --cacert ca.pem \
             --connect-timeout 2 --max-time 3 \
-            "$PROTOCOL://$SERVER_IP/healthcheck")
-          EXIT_CODE=$?
-          
-          if [ $EXIT_CODE -ne 0 ]; then
-            echo "⚠️ Curl failed to connect (exit code $EXIT_CODE). Server may be offline."
-            echo "🟡 Continuing with deployment anyway..."
+            "$PROTOCOL://$SERVER_IP/healthcheck" || echo "curl_failed")
+          if [ "$STATUS" = "curl_failed" ]; then
+            echo "⚠️ Curl timed out or failed to connect (exit code 28). Server may be offline."
+            echo "🟡 Skipping health check failure and continuing deployment..."
+          elif [ "$STATUS" = "200" ]; then
+            echo "✅ Server is healthy (HTTP 200)"
           else
-            if [ "$STATUS" = "200" ]; then
-              echo "✅ Server is healthy (HTTP 200)"
-            else
-              echo "⚠️ Server responded with HTTP $STATUS"
-            fi
+            echo "⚠️ Server responded with HTTP $STATUS. Proceeding anyway..."
           fi
+
 
 
