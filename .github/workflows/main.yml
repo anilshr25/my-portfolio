@@ -23,16 +23,10 @@ jobs:
         env:
           WORK_DIR: ${{ secrets.WORK_DIR }}
         run: |
-          ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_1 << 'EOF'
+          ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_1 << EOF
             set -e
             echo "Deploying to $WORK_DIR"
             cd "$WORK_DIR"
-            ls -al
-            echo "Saving current commit..."
-            git rev-parse HEAD > .prev-deploy || true
-
-            echo "Pulling latest code..."
-            git reset --hard
             git pull origin main
           EOF
 
