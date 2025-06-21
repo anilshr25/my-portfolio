@@ -13,9 +13,9 @@ jobs:
 
       - name: Decode mTLS certificates
         run: |
-          printf "%s" "${{ secrets.CA_PEM_B64 }}" | base64 -d > /tmp/client.crt
-          printf "%s" "${{ secrets.CERT_PEM_B64 }}" | base64 -d > /tmp/client.key
-          printf "%s" "${{ secrets.KEY_PEM_B64 }}" | base64 -d > /tmp/ca.pem
+          printf "%s" "${{ secrets.CERT_PEM_B64 }}" | base64 -d > /tmp/client.crt
+          printf "%s" "${{ secrets.KEY_PEM_B64 }}" | base64 -d > /tmp/client.key
+          printf "%s" "${{ secrets.CA_PEM_B64 }}" | base64 -d > /tmp/ca.pem
           
       - name: Health check with mTLS (2s timeout)
         env:
@@ -25,7 +25,7 @@ jobs:
           echo "⏳ Checking $PROTOCOL://$SERVER_IP/healthcheck with mTLS"
 
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            --cert client.crt --key client.key --cacert ca.pem \
+            --cert /tmp/client.crt --key /tmp/client.key --cacert /tmp/ca.pem \
             --connect-timeout 2 --max-time 2 \
             "$PROTOCOL://$SERVER_IP/healthcheck")
 
