@@ -25,10 +25,6 @@ jobs:
 
       - name: Configure secure environment
         run: |
-          # Create secure directory with restricted permissions
-          mkdir -m 700 -p .secrets
-          umask 077
-
           # Decode certificates with strict validation
           echo "${{ secrets.CERT_PEM_B64 }}" | base64 -d > .secrets/client.crt
           echo "${{ secrets.KEY_PEM_B64 }}" | base64 -d > .secrets/client.key
