@@ -25,7 +25,8 @@ jobs:
           ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_1 << EOF
             set -e
             echo "Deploying to $WORK_DIR"
-            chmod +x $WORK_DIR/deploy.sh || { echo "Failed to make deploy script executable"; exit 1; }
+            cd $WORK_DIR
+            chmod +x deploy.sh || { echo "Failed to make deploy script executable"; exit 1; }
             $WORK_DIR/deploy.sh || { echo "Deploy script failed"; exit 1; }
           EOF
 
@@ -36,6 +37,7 @@ jobs:
             echo "✅ $SERVER_2 is reachable. Deploying..."
             ssh -o StrictHostKeyChecking=no "$USERNAME@$SERVER_2" <<EOF
             set -e
+            cd $WORK_DIR
             chmod +x $WORK_DIR/deploy.sh || { echo "Failed to make deploy script executable"; exit 1; }
             $WORK_DIR/deploy.sh || { echo "Deploy script failed"; exit 1; }
           EOF
