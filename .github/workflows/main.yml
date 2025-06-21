@@ -35,25 +35,21 @@ jobs:
       - name: Deploy to Server 2 (only if online)
         run: |
           echo "🔍 Checking if $SERVER_2 is online..."
-      
-          # Try connecting to port 22 (SSH) with 3-second timeout
-          if nc -z -w3 $SERVER_2 22; then
+          if nc -z -w3 $SERVER_IP 22; then
             echo "✅ $SERVER_IP is reachable. Deploying..."
-      
-            ssh -o StrictHostKeyChecking=no $USERNAME@$SERVER_2 << EOF
+            ssh -o StrictHostKeyChecking=no $USERNAME@$SERVER_2 bash -s << 'EOF'
               set -e
               echo "Deploying to $WORK_DIR"
               cd "$WORK_DIR"
               echo "Saving current commit..."
               git rev-parse HEAD > .prev-deploy || true
-      
               echo "Pulling latest code..."
               git reset --hard
               git pull origin main
             EOF
-      
           else
             echo "❌ $SERVER_2 is offline. Skipping deployment."
           fi
+
 
 
