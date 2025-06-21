@@ -38,6 +38,13 @@ jobs:
 
       - name: Deploy to Server 1
         run: |
-          echo $WORK_DIR
-          echo $SERVER_1
+          ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_1 << 'EOF'
+            set -e
+            cd /var/www/html/my-portfolio || exit 1
+            echo "Saving current commit..."
+            git rev-parse HEAD > .prev-deploy || true
+
+            echo "Pulling latest code..."
+            git reset --hard
+            git pull origin main
           EOF
