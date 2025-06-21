@@ -25,7 +25,8 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_1 << 'EOF'
             set -e
-            cd $WORK_DIR || exit 1
+            echo "Deploying to $WORK_DIR"
+            cd "$WORK_DIR"
             ls -al
             echo "Saving current commit..."
             git rev-parse HEAD > .prev-deploy || true
@@ -41,7 +42,8 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_2 << 'EOF'
             set -e
-            cd $WORK_DIR || exit 1
+            echo "Deploying to $WORK_DIR"
+            cd "$WORK_DIR"
             echo "Saving current commit..."
             git rev-parse HEAD > .prev-deploy || true
 
