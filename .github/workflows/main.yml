@@ -13,7 +13,10 @@ jobs:
 
       - name: Decode mTLS certificates
         run: |
-          echo "${{ secrets.CERT_PEM_B64 }}" | base64 -d
+          printf "%s" "${{ secrets.CERT_PEM_B64 }}" | base64 -d > client.crt
+          printf "%s" "${{ secrets.KEY_PEM_B64 }}" | base64 -d > client.key
+          printf "%s" "${{ secrets.CA_PEM_B64 }}" | base64 -d > ca.pem
+          
       - name: Health check with mTLS (2s timeout)
         env:
           SERVER_IP: ${{ secrets.DEPLOY_SERVER_TWO }}
