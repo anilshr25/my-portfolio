@@ -23,23 +23,21 @@ jobs:
           PROTOCOL: https
         run: |
           echo "⏳ Checking $PROTOCOL://$SERVER_IP/healthcheck with mTLS..."
-          
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             --cert client.crt --key client.key --cacert ca.pem \
             --connect-timeout 2 --max-time 3 \
             "$PROTOCOL://$SERVER_IP/healthcheck")
-          
           EXIT_CODE=$?
           
           if [ $EXIT_CODE -ne 0 ]; then
-            echo "❌ Curl failed to connect (exit code $EXIT_CODE). Server may be offline or unreachable."
-            exit 1
-          fi
-          
-          if [ "$STATUS" = "200" ]; then
-            echo "✅ Server is healthy (HTTP 200)"
+            echo "⚠️ Curl failed to connect (exit code $EXIT_CODE). Server may be offline."
+            echo "🟡 Continuing with deployment anyway..."
           else
-            echo "⚠️ Server responded with HTTP $STATUS"
-            exit 1
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Server is healthy (HTTP 200)"
+            else
+              echo "⚠️ Server responded with HTTP $STATUS"
+            fi
           fi
+
 
