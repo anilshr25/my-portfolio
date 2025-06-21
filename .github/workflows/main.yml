@@ -32,13 +32,6 @@ jobs:
       - name: Perform mTLS health check
         id: healthcheck
         run: |
-          # Setup cleanup trap
-          cleanup() {
-            shred -u .secrets/client.key .secrets/client.crt .secrets/ca.pem
-            rm -rf .secrets
-          }
-          trap cleanup EXIT
-          
           # Configure parameters
           ENDPOINT="${INPUT_HEALTHCHECK_ENDPOINT:-/healthcheck}"
           FULL_URL="${{ inputs.protocol || 'https' }}://${{ inputs.server-ip }}${ENDPOINT}"
