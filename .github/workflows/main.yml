@@ -26,6 +26,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_1 << 'EOF'
             set -e
             cd $WORK_DIR || exit 1
+            ls -al
             echo "Saving current commit..."
             git rev-parse HEAD > .prev-deploy || true
 
