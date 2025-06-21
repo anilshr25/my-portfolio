@@ -1,4 +1,4 @@
-name: Secure mTLS Health Check
+name: Secure mTLS Health Check with Certificate Validation
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write  # Required for OIDC authentication
+      id-token: write
       
     steps:
       - name: Checkout code
@@ -29,22 +29,57 @@ jobs:
           mkdir -m 700 -p .secrets
           umask 077
 
-          # Decode certificates with strict validation
-          echo "${{ secrets.CERT_PEM_B64 }}" | base64 -d > .secrets/client.crt
-          echo "${{ secrets.KEY_PEM_B64 }}" | base64 -d > .secrets/client.key
-          echo "${{ secrets.CA_PEM_B64 }}" | base64 -d > .secrets/ca.pem
-          
-          # Validate certificate formats
-          openssl x509 -in .secrets/client.crt -noout
-          openssl rsa -in .secrets/client.key -check -noout
-          openssl x509 -in .secrets/ca.pem -noout
+          # Validate and clean base64 inputs
+          clean_base64() {
+            # Remove all non-base64 characters
+            echo "$1" | tr -d '\n\r\t ' | grep -E '^[A-Za-z0-9+/=]+$'
+          }
+
+          # Decode certificates with validation
+          decode_cert() {
+            local name=$1
+            local secret=$2
+            local output=$3
+            local validator=$4
+            
+            # Clean and validate base64 input
+            local clean_input=$(clean_base64 "$secret")
+            if [ -z "$clean_input" ]; then
+              echo "❌ $name: Empty or invalid base64 input"
+              exit 1
+            fi
+            
+            # Decode with padding validation
+            echo "$clean_input" | base64 -d > "$output" 2>/dev/null
+            if [ $? -ne 0 ]; then
+              echo "❌ $name: Base64 decoding failed (invalid padding or characters)"
+              exit 1
+            fi
+            
+            # Validate certificate format
+            $validator "$output" >/dev/null 2>&1
+            if [ $? -ne 0 ]; then
+              echo "❌ $name: Invalid certificate format"
+              exit 1
+            fi
+          }
+
+          # Decode and validate certificates
+          decode_cert "Client Certificate" "${{ secrets.CERT_PEM_B64 }}" .secrets/client.crt \
+            "openssl x509 -noout"
+            
+          decode_cert "Client Key" "${{ secrets.KEY_PEM_B64 }}" .secrets/client.key \
+            "openssl rsa -check -noout"
+            
+          decode_cert "CA Certificate" "${{ secrets.CA_PEM_B64 }}" .secrets/ca.pem \
+            "openssl x509 -noout"
 
       - name: Perform mTLS health check
         id: healthcheck
         run: |
           # Setup cleanup trap
           cleanup() {
-            shred -u .secrets/client.key .secrets/client.crt .secrets/ca.pem
+            find .secrets -type f -exec shred -u {} + 2>/dev/null || true
             rm -rf .secrets
           }
           trap cleanup EXIT
@@ -55,39 +90,37 @@ jobs:
           
           echo "🔐 Performing mTLS health check to ${FULL_URL}"
           
-          # Execute health check with advanced security
-          STATUS=$(curl -sSI \
+          # Execute health check
+          curl_output=$(curl -sSI \
             --cert .secrets/client.crt \
             --key .secrets/client.key \
             --cacert .secrets/ca.pem \
             --connect-timeout 5 \
             --max-time 10 \
-            --retry 0 \
             --tlsv1.3 \
             --http2 \
             -o /dev/null \
             -w "%{http_code}" \
-            "${FULL_URL}" 2>&1 | tail -1 || echo "CURL_ERROR")
+            "${FULL_URL}" 2>&1)
+            
+          status_code=$?
+          http_status=$(echo "$curl_output" | tail -n1)
           
           # Handle results
-          if [[ "$STATUS" =~ ^[0-9]+$ ]]; then
-            if [ "$STATUS" -eq 200 ]; then
+          if [[ "$http_status" =~ ^[0-9]{3}$ ]]; then
+            if [ "$http_status" -eq 200 ]; then
               echo "✅ Server is healthy (HTTP 200)"
               echo "status=success" >> $GITHUB_OUTPUT
             else
-              echo "❌ Health check failed with HTTP $STATUS"
+              echo "❌ Health check failed with HTTP $http_status"
               echo "status=fail" >> $GITHUB_OUTPUT
               exit 1
             fi
           else
-            echo "🔥 Critical connection error: $STATUS"
+            echo "🔥 Connection error: $curl_output"
             echo "status=error" >> $GITHUB_OUTPUT
             exit 2
           fi
 
       - name: Security cleanup
-        if: always()
-        run: |
-          # Nuclear option for cleanup
-          find .secrets -type f -exec shred -u {} + 2>/dev/null || true
-          rm -rf .secrets
+        if: always
