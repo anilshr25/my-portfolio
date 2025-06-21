@@ -12,6 +12,7 @@ jobs:
       WORK_DIR: ${{ secrets.WORK_DIR }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       SERVER_1: ${{ secrets.DEPLOY_SERVER_ONE }}
+      SERVER_2: ${{ secrets.DEPLOY_SERVER_TWO }}
       
     steps:
       - name: Setup SSH
@@ -23,7 +24,20 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_1 << 'EOF'
             set -e
-            cd /var/www/html/my-portfolio || exit 1
+            cd $WORK_DIR || exit 1
+            echo "Saving current commit..."
+            git rev-parse HEAD > .prev-deploy || true
+
+            echo "Pulling latest code..."
+            git reset --hard
+            git pull origin main
+          EOF
+
+      - name: Deploy to Server 2
+        run: |
+          ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_2 << 'EOF'
+            set -e
+            cd $WORK_DIR || exit 1
             echo "Saving current commit..."
             git rev-parse HEAD > .prev-deploy || true
 
