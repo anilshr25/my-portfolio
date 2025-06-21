@@ -41,7 +41,7 @@ jobs:
             if [ ! -d "$WORK_DIR/.git" ]; then
               echo "Directory is not a Git repo. Cloning fresh copy..."
               rm -rf $WORK_DIR
-              git clone git@github.com:your-org/your-repo.git $WORK_DIR
+              git clone git@github.com:anilshr25/my-portfolio.git $WORK_DIR
             else
               echo "Git repo found. Saving current commit..."
               cd $WORK_DIR
