@@ -1,47 +1,44 @@
-name: Deploy with mTLS healthcheck
+name: Deploy My Portfolio
 
 on:
-  workflow_dispatch:
-
+  push:
+    branches:
+      - main
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    env:
+      WORK_DIR: ${{ secrets.WORK_DIR }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      SERVER_1: ${{ secrets.DEPLOY_SERVER_ONE }}
+      SERVER_2: ${{ secrets.DEPLOY_SERVER_TWO }}
+      
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Decode mTLS certificates
+      - name: Deploy to Server 1
         run: |
-          printf "%s" "${{ secrets.CERT_PEM_B64 }}" | base64 -d > /tmp/client.crt
-          printf "%s" "${{ secrets.KEY_PEM_B64 }}" | base64 -d > /tmp/client.key
-          printf "%s" "${{ secrets.CA_PEM_B64 }}" | base64 -d > /tmp/ca.pem
-          
-      - name: Health check with mTLS (allow failure)
-        env:
-          SERVER_IP: ${{ secrets.DEPLOY_SERVER_TWO }}
-          PROTOCOL: https
+          ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_1 << EOF
+            set -e
+            echo "Deploying to $WORK_DIR"
+            cd "$WORK_DIR"
+            echo "Saving current commit..."
+            git rev-parse HEAD > .prev-deploy || true
+            echo "Pulling latest code..."
+            git reset --hard
+            git pull origin main
+          EOF
+
+      - name: Deploy to Server 2
         run: |
-          echo "⏳ Checking $PROTOCOL://$SERVER_IP/healthcheck with mTLS..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            --cert client.crt --key client.key --cacert ca.pem \
-            --connect-timeout 2 --max-time 3 \
-            "$PROTOCOL://$SERVER_IP/healthcheck" || echo "Server is offline")
-          if [ "$STATUS" = "200" ]; then
-            echo "✅ Server is healthy (HTTP 200)"
-          else
-            echo "⚠️ Server responded with HTTP $STATUS. Proceeding anyway..."
-          fi
-      - name: Deploy to Server 2 (only if online)
-        env:
-          SERVER_IP: ${{ secrets.DEPLOY_SERVER_TWO }}
-          USERNAME: ${{ secrets.USERNAME }}
-          WORK_DIR: ${{ secrets.WORK_DIR }}
-        run: |
-          echo "🔍 Checking if $SERVER_IP is online..."
-          if nc -z -w3 "$SERVER_IP" 22; then
-            echo "✅ $SERVER_IP is reachable. Deploying..."
-            ssh -o StrictHostKeyChecking=no "$USERNAME@$SERVER_IP" <<EOF
+          echo "🔍 Checking if $SERVER_2 is online..."
+          if nc -z -w3 "$SERVER_2" 22; then
+            echo "✅ $SERVER_2 is reachable. Deploying..."
+            ssh -o StrictHostKeyChecking=no "$USERNAME@$SERVER_2" <<EOF
             set -e
             echo "Deploying to $WORK_DIR"
             cd "$WORK_DIR"
@@ -52,5 +49,5 @@ jobs:
             git pull origin main
           EOF
           else
-            echo "❌ $SERVER_IP is offline. Skipping deployment."
+            echo "❌ $SERVER_2 is offline. Skipping deployment."
           fi
