@@ -9,7 +9,6 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      WORK_DIR: ${{ secrets.WORK_DIR }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       SERVER_1: ${{ secrets.DEPLOY_SERVER_ONE }}
       SERVER_2: ${{ secrets.DEPLOY_SERVER_TWO }}
@@ -21,6 +20,8 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Deploy to Server 1
+        env:
+          WORK_DIR: ${{ secrets.WORK_DIR }}
         run: |
           ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_1 << 'EOF'
             set -e
@@ -34,6 +35,8 @@ jobs:
           EOF
 
       - name: Deploy to Server 2
+        env:
+          WORK_DIR: ${{ secrets.WORK_DIR }}
         run: |
           ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_2 << 'EOF'
             set -e
