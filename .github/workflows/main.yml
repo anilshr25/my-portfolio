@@ -36,10 +36,7 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_1 << 'EOF'
             set -e
-            cd $WORK_DIR || exit 1
             echo $WORK_DIR
-            git reset --hard
-            git pull origin main
           EOF
 
       - name: Deploy to Server 2
