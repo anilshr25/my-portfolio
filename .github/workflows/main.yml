@@ -26,11 +26,8 @@ jobs:
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             --cert client.crt --key client.key --cacert ca.pem \
             --connect-timeout 2 --max-time 3 \
-            "$PROTOCOL://$SERVER_IP/healthcheck" || echo "curl_failed")
-          if [ "$STATUS" = "curl_failed" ]; then
-            echo "⚠️ Curl timed out or failed to connect (exit code 28). Server may be offline."
-            echo "🟡 Skipping health check failure and continuing deployment..."
-          elif [ "$STATUS" = "200" ]; then
+            "$PROTOCOL://$SERVER_IP/healthcheck" || echo "Server is offline")
+          if [ "$STATUS" = "200" ]; then
             echo "✅ Server is healthy (HTTP 200)"
           else
             echo "⚠️ Server responded with HTTP $STATUS. Proceeding anyway..."
