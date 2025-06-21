@@ -1,49 +1,37 @@
-name: Deploy My Portfolio
+name: Deploy with mTLS healthcheck (single try)
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    env:
-      WORK_DIR: ${{ secrets.WORK_DIR }}
-      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-      SERVER_1: ${{ secrets.DEPLOY_SERVER_ONE }}
-      SERVER_2: ${{ secrets.DEPLOY_SERVER_TWO }}
-      
     steps:
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Deploy to Server 1
+      - name: Decode certificates
         run: |
-          ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_1 << EOF
-            set -e
-            echo "Deploying to $WORK_DIR"
-            cd "$WORK_DIR"
-            echo "Saving current commit..."
-            git rev-parse HEAD > .prev-deploy || true
+          echo "${{ secrets.CERT_PEM_B64 }}" | base64 -d > client.crt
+          echo "${{ secrets.KEY_PEM_B64 }}" | base64 -d > client.key
+          echo "${{ secrets.CA_PEM_B64 }}" | base64 -d > ca.pem
 
-            echo "Pulling latest code..."
-            git reset --hard
-            git pull origin main
-          EOF
-
-      - name: Deploy to Server 2
+      - name: Health check with mTLS (single attempt)
+        env:
+          SERVER_IP: 192.168.1.100
+          PROTOCOL: https
         run: |
-          ssh -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_2 << EOF
-            set -e
-            echo "Deploying to $WORK_DIR"
-            cd "$WORK_DIR"
-            echo "Saving current commit..."
-            git rev-parse HEAD > .prev-deploy || true
+          echo "🔎 Checking health of $PROTOCOL://$SERVER_IP/healthcheck"
 
-            echo "Pulling latest code..."
-            git reset --hard
-            git pull origin main
-          EOF
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            --cert client.crt --key client.key --cacert ca.pem \
+            --connect-timeout 3 --max-time 5 \
+            "$PROTOCOL://$SERVER_IP/healthcheck")
+
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Server $SERVER_IP is healthy."
+          else
+            echo "❌ Healthcheck failed with HTTP status $STATUS."
+            exit 1
+          fi
