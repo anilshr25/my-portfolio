@@ -6,7 +6,7 @@ on:
       server-ip:
         description: "Target Server IP"
         required: true
-        default: "139.59.34.252"
+        default: "192.168.1.100"
       healthcheck-endpoint:
         description: "Health Check Endpoint"
         required: false
@@ -25,13 +25,30 @@ jobs:
 
       - name: Configure secure environment
         run: |
+          # Create secure directory with restricted permissions
+          mkdir -m 700 -p .secrets
+          umask 077
+
           # Decode certificates with strict validation
           echo "${{ secrets.CERT_PEM_B64 }}" | base64 -d > .secrets/client.crt
           echo "${{ secrets.KEY_PEM_B64 }}" | base64 -d > .secrets/client.key
           echo "${{ secrets.CA_PEM_B64 }}" | base64 -d > .secrets/ca.pem
+          
+          # Validate certificate formats
+          openssl x509 -in .secrets/client.crt -noout
+          openssl rsa -in .secrets/client.key -check -noout
+          openssl x509 -in .secrets/ca.pem -noout
+
       - name: Perform mTLS health check
         id: healthcheck
         run: |
+          # Setup cleanup trap
+          cleanup() {
+            shred -u .secrets/client.key .secrets/client.crt .secrets/ca.pem
+            rm -rf .secrets
+          }
+          trap cleanup EXIT
+          
           # Configure parameters
           ENDPOINT="${INPUT_HEALTHCHECK_ENDPOINT:-/healthcheck}"
           FULL_URL="${{ inputs.protocol || 'https' }}://${{ inputs.server-ip }}${ENDPOINT}"
