@@ -22,18 +22,24 @@ jobs:
           SERVER_IP: ${{ secrets.DEPLOY_SERVER_TWO }}
           PROTOCOL: https
         run: |
-          echo "⏳ Checking $PROTOCOL://$SERVER_IP/healthcheck with mTLS"
-
+          echo "⏳ Checking $PROTOCOL://$SERVER_IP/healthcheck with mTLS..."
+          
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            --cert /tmp/client.crt --key /tmp/client.key --cacert /tmp/ca.pem \
-            --connect-timeout 2 --max-time 2 \
+            --cert client.crt --key client.key --cacert ca.pem \
+            --connect-timeout 2 --max-time 3 \
             "$PROTOCOL://$SERVER_IP/healthcheck")
-
-          echo "↪ HTTP Status: $STATUS"
-
-          if [ "$STATUS" = "200" ]; then
-            echo "✅ Server $SERVER_IP is healthy."
-          else
-            echo "❌ Healthcheck failed with HTTP status $STATUS."
+          
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ Curl failed to connect (exit code $EXIT_CODE). Server may be offline or unreachable."
             exit 1
           fi
+          
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Server is healthy (HTTP 200)"
+          else
+            echo "⚠️ Server responded with HTTP $STATUS"
+            exit 1
+          fi
+
